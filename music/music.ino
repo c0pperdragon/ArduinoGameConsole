@@ -4,29 +4,52 @@
 #include "musictrack.h"
 
 
-int samplecounter;
-volatile bool tickstart;
-
 void setup() 
 {
-    samplecounter = 0;
-    tickstart = false;
-    
-    Synth::init(4);
-    Synth::setNotify(countsamples);
+    noInterrupts();
+    Synth::init(simplepattern);
+    interrupts();
 } 
 
-void countsamples()
+void simplepattern(uint8_t vcounter) 
 {
-    if (samplecounter<311)  { samplecounter++; }
-    else  {    samplecounter=0;  }
-    tickstart = (samplecounter<100);
-}
+    PORTD = 0xC0;
+    PORTD = 0xC0;
+    PORTD = 0xC0;
+    PORTD = 0xC0;
+    PORTD = 0xC0;
+    PORTD = 0xC0;
+    PORTD = 0xC0;
+    PORTD = 0xC0;
+    PORTD = 0xC0;
+    PORTD = 0xC0;
+    PORTD = 0xC0;
+    PORTD = 0xC0;
+    PORTD = 0x00;
+    PORTD = 0x00;
+    PORTD = 0x00;
+    PORTD = 0x00;
+    
+    register uint8_t x = (vcounter<<5) & 0xC0;
 
-void waittick()
-{       
-    while(tickstart) {}
-    while (!tickstart) {}
+    PORTD=x; PORTD=x; PORTD=x; x += 64;
+    PORTD=x; PORTD=x; PORTD=x; x += 64;
+    PORTD=x; PORTD=x; PORTD=x; x += 64;
+    PORTD=x; PORTD=x; PORTD=x; x += 64;
+    PORTD=x; PORTD=x; PORTD=x; x += 64;
+    PORTD=x; PORTD=x; PORTD=x; x += 64;
+    PORTD=x; PORTD=x; PORTD=x; x += 64;
+    PORTD=x; PORTD=x; PORTD=x; x += 64;
+    PORTD=x; PORTD=x; PORTD=x; x += 64;
+    PORTD=x; PORTD=x; PORTD=x; x += 64;
+    PORTD=x; PORTD=x; PORTD=x; x += 64;
+    PORTD=x; PORTD=x; PORTD=x; x += 64;
+    PORTD=x; PORTD=x; PORTD=x; x += 64;
+    PORTD=x; PORTD=x; PORTD=x; x += 64;
+    PORTD=x; PORTD=x; PORTD=x; x += 64;
+    PORTD=x; PORTD=x; PORTD=x; x += 64;
+
+    PORTD = 0;
 }
 
 void loop()
@@ -47,9 +70,9 @@ void loop()
     };
     Song song(4, part1, part1, part2, part1);
 
-    waittick();
+    Synth::waitForBlanking();
     song.start();
-    while (song.tick()) { waittick(); }
+    while (song.tick()) { Synth::waitForBlanking(); }
 
     for (;;) {}
 }

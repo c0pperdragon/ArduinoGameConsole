@@ -4,7 +4,7 @@
 
 #include <inttypes.h>
 
-#define MAXVOICES 4
+#define NUMVOICES 4
 
 #define RECTANGLE   0
 #define SINE        1
@@ -24,24 +24,23 @@ typedef struct _SYNTH_VOICE
   uint16_t phase;
 } _SYNTH_VOICE;
 
-typedef void (*voidfunction_t)();
+typedef void (*renderfunction_t)(uint8_t line);
 
 class Synth 
 {
 public:
-  static void init(uint8_t numvoices);
-  static void setNotify(voidfunction_t n);
- 
-  static volatile _SYNTH_VOICE voice[MAXVOICES];
-  
+  static void init(renderfunction_t renderfunction);
+  static void waitForBlanking();
+  static _SYNTH_VOICE voice[NUMVOICES];
+
 //private:
-  static uint8_t numvoices;         // number of supported voices
   static uint8_t level;             // current output voltage level
   static uint16_t boosttable[256];  // range from 0 to 1023
-  static voidfunction_t notificationHandler;   // notification in frequency of sample
+  static renderfunction_t renderfunction;
     
   static inline void processAudio();
-  static inline int8_t processVoice(volatile _SYNTH_VOICE &v);
+  static inline int8_t processVoice(_SYNTH_VOICE &v);
+  static inline void adjustSync(uint8_t vcounter);
 };
 
 #endif

@@ -6,11 +6,15 @@
 // designed for a ATMEGA328
 
 // static data for the Synth library
-volatile _SYNTH_VOICE Synth::voice[MAXVOICES];
-uint8_t Synth::numvoices;  
+renderfunction_t Synth::renderfunction;
+
+_SYNTH_VOICE Synth::voice[NUMVOICES];
 uint8_t Synth::level;
 uint16_t Synth::boosttable[256]; 
-voidfunction_t Synth::notificationHandler;
+
+uint8_t vcounter;
+volatile bool isblanking;
+
 
 static const uint8_t PROGMEM sine_table[] = 
 {
@@ -32,20 +36,21 @@ static const uint8_t PROGMEM sine_table[] =
      78, 81, 84, 87, 90, 93, 96, 99,102,105,108,111,115,118,121,124
 };
 
-void donothinghandler()
-{}
 
-void Synth::init(uint8_t numvoices) 
+
+void Synth::init(renderfunction_t renderfunction) 
 {   
- 
     uint16_t i;
 
-    Synth::numvoices = numvoices;
-    level = 128;
-    notificationHandler = &donothinghandler;
+    Synth::renderfunction = renderfunction;
     
+    level = 128;
+    
+    isblanking = true;
+    vcounter = 0;
+
     // start values of individual signal generation
-    for (i=0; i<numvoices; i++)
+    for (i=0; i<NUMVOICES; i++)
     {   
         voice[i].volume = 0;
         voice[i].currentvolume = 0;
@@ -81,18 +86,40 @@ void Synth::init(uint8_t numvoices)
     OCR1BH = 3;    // prepare high byte 
     OCR1BL = 255;   // write to 16-bit register 
 
-    // enable timer 1 overflow interrupt to start up the engine
-    TIMSK1 = 0x01;  // B00000001;  
+
+    // -- TIMER2 register setup
+    // set to mode 7 (fast PWM counts from 0 to OCRA)
+    TCCR2A = 
+      0x03    // B00000011    // WGM1:0=3
+    | 0x00    // B00000000    // COM2A : not used
+    | 0x30;   // B00110000 ;  // COM2B : clear on bottom, set at match
+    TCCR2B = 
+      0x08    // B00001000    // WGM3=1
+    | 0x02;   // B00000010 ;  // clock source = 1/8 prescaler
+      
+    OCR2A = 127; // count sequence 0 to 127 
+    OCR2B = 8;   // set output high again after 4.5 us 
+
+    // set timers to well-defined initial values to force timer to run in harmonic operation from now on
+    GTCCR = 0x02;  // clear timer 2 prescaler
+    TCNT1H = 0;    // prepare high-byte for timer1 conter
+    TCNT1L = 0;    // clear timer1 counter
+    TCNT2 = 20;    // set timer2 counter to specified start value
+       
+    // enable timer 1 overflow interrupt at the next line start
+    TIMSK1 = 0x01;  // B00000001;     
 
     // configure output pin directions
     DDRB |= 0x06;  // B00000110    enable timer 1 output pins
-    DDRD |= 0x04;  // B00000100;   enable debug output pin   
+    DDRD |= 0xCC;  // B11001000;   enable video output pins 
 }  
 
-void Synth::setNotify(voidfunction_t n)
+void Synth::waitForBlanking()
 {
-    notificationHandler = n;  
+  while (isblanking) {}
+  while (!isblanking) {}
 }
+
 
 
 inline void Synth::processAudio()
@@ -101,7 +128,7 @@ inline void Synth::processAudio()
 
     // process individual voices 
     int8_t total = 0;
-    for (i=0; i<numvoices; i++)
+    for (i=0; i<NUMVOICES; i++)
     {
         total += processVoice(voice[i]);
     }
@@ -147,7 +174,7 @@ inline void Synth::processAudio()
     }
 }
 
-inline int8_t Synth::processVoice(volatile _SYNTH_VOICE &v)
+inline int8_t Synth::processVoice(_SYNTH_VOICE &v)
 {
     v.phase += v.frequency;
 
@@ -188,15 +215,86 @@ inline int8_t Synth::processVoice(volatile _SYNTH_VOICE &v)
     }
 }
 
+
+inline void Synth::adjustSync(uint8_t vcounter)
+{
+    const uint8_t vtrigger = 13;
+    
+    // switch from normal horizontal sync to 32 us pulse intervals
+    if (vcounter==vtrigger-1) 
+    {   OCR2A = 63; // count sequence 0 to 63 
+                    // do not change pulse duration
+    }
+    // switch to short pulses
+    else if (vcounter==vtrigger+0)
+    {
+        OCR2B = 3;   // set output high again after 2 us 
+    }
+    // switch to vsync pulses 
+    else if (vcounter==vtrigger+2)
+    {
+        // delay until counter is beyond the next reset point
+        uint8_t c = TCNT2;
+        while (TCNT2 >= c) {} 
+        OCR2B = 60;   // set output high again after 30 us 
+    }
+    // switch to short pulses 
+    else if (vcounter==vtrigger+5)
+    {
+        OCR2B = 3;   // set output high again after 2 us 
+    }
+    // switch to normal hsync pulses 
+    else if (vcounter==vtrigger+7)
+    {
+        // delay until counter is beyond the next reset point
+        uint8_t c = TCNT2;
+        while (TCNT2 >= c) {} 
+        OCR2A = 127; // count sequence 0 to 127
+        OCR2B = 8;   // set output high again after 4.5 us 
+    }  
+}
+
 // interrupt routine every 64 microseconds (15.625 kHz)
 ISR(TIMER1_OVF_vect)
 {
-    PORTD = 0xfb;  // B11111011;  // debug output for time measurement
+    // even out delayed interrupt trigger (due to 1 or 2 cycle instructions)
+    __asm__ __volatile__ (
+            "lds __tmp_reg__,%[counter]\n\t"   // 0x84\n\t"  
+            "asr __tmp_reg__\n\t"       // test for bit 0 of the counter
+            "brcc afterbranch\n\t"      // this takes either 1 or 2 cycles 
+        "afterbranch:\n\t"
+            :
+            :  [counter] "i" (_SFR_ADDR(TCNT1L))
+    );
+      
+//    PORTD = 0xfb;  // B11111011;  // debug output for time measurement
 
-    Synth::notificationHandler();
-    if (Synth::numvoices>0)
-    {   Synth::processAudio();
+    // progress line counter and trigger appropriate render or sync adjustment action
+    if (!isblanking)
+    {
+        Synth::renderfunction(vcounter);
+        if (vcounter<255)
+        {   vcounter++;
+        }
+        else
+        {   vcounter = 0;
+            isblanking = true;
+        }
+    }
+    else
+    {
+        Synth::adjustSync(vcounter);
+        if (vcounter<55)
+        {   vcounter++;
+        }
+        else
+        {
+            vcounter = 0;
+            isblanking = false;
+        }
     }
     
-    PORTD = 0xff;  // B11111111;    // debug output for time measurement
+    Synth::processAudio();
+
+//    PORTD = 0xff;  // B11111111;    // debug output for time measurement
 }
