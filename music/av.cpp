@@ -1,22 +1,24 @@
-#include "synth.h"
+#include "av.h"
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #include "pins_arduino.h"
 
 // designed for a ATMEGA328
 
-// static data for the Synth library
-renderfunction_t Synth::renderfunction;
+_AV_VOICE voiceA;
+_AV_VOICE voiceB;
+_AV_VOICE voiceC;
+_AV_VOICE voiceD;
 
-_SYNTH_VOICE Synth::voice[NUMVOICES];
-uint8_t Synth::level;
-uint16_t Synth::boosttable[256]; 
+renderfunction_t av_renderfunction;
 
+uint8_t av_level;             // current output voltage level
 uint8_t vcounter;
 volatile bool isblanking;
 
 
-static const uint8_t PROGMEM sine_table[] = 
+
+static const uint8_t PROGMEM waveDummy[] = 
 {
     127,130,133,136,139,143,146,149,152,155,158,161,164,167,170,173,
     176,179,182,184,187,190,193,195,198,200,203,205,208,210,213,215,
@@ -36,38 +38,31 @@ static const uint8_t PROGMEM sine_table[] =
      78, 81, 84, 87, 90, 93, 96, 99,102,105,108,111,115,118,121,124
 };
 
-
-
-void Synth::init(renderfunction_t renderfunction) 
+         
+inline void initVoice(_AV_VOICE &v)
+{
+    v.volume = 0;
+    v.currentvolume = 0;
+    v.waveform = waveDummy;
+    v.duty = 128;
+    v.frequency = HERTZ(440);
+    v.phase = 0;
+    v.volume = 0;
+}
+void av_init(renderfunction_t renderfunction) 
 {   
-    uint16_t i;
-
-    Synth::renderfunction = renderfunction;
+    av_renderfunction = renderfunction;
     
-    level = 128;
+    av_level = 128;
     
     isblanking = true;
     vcounter = 0;
 
     // start values of individual signal generation
-    for (i=0; i<NUMVOICES; i++)
-    {   
-        voice[i].volume = 0;
-        voice[i].currentvolume = 0;
-        voice[i].waveform = RECTANGLE;
-        voice[i].duty = 128;
-        voice[i].frequency = HERTZ(440);
-        voice[i].phase = 0;
-    }
-
-    // compute boost levels
-    for (i=0; i<256; i++)
-    {
-//        boosttable[x] = 262911 / (512-x);   // too slow
-//        boosttable[x] = 199485 / (450-x);   // still too slow
-//        boosttable[x] = 148335 / (400-x);     // too fast
-        boosttable[i] = 179025 / (430-i);     // just right ;-)
-    }  
+    initVoice(voiceA);
+    initVoice(voiceB);
+    initVoice(voiceC);
+    initVoice(voiceD);
 
     // -- TIMER 1 register setup
     // set to mode 7 for 10-bit counter (fast PWM)
@@ -86,79 +81,87 @@ void Synth::init(renderfunction_t renderfunction)
     OCR1BH = 3;    // prepare high byte 
     OCR1BL = 255;   // write to 16-bit register 
 
-
-    // -- TIMER2 register setup
+    // -- TIMER0 register setup
     // set to mode 7 (fast PWM counts from 0 to OCRA)
-    TCCR2A = 
+    TCCR0A = 
       0x03    // B00000011    // WGM1:0=3
     | 0x00    // B00000000    // COM2A : not used
     | 0x30;   // B00110000 ;  // COM2B : clear on bottom, set at match
-    TCCR2B = 
+    TCCR0B = 
       0x08    // B00001000    // WGM3=1
     | 0x02;   // B00000010 ;  // clock source = 1/8 prescaler
       
-    OCR2A = 127; // count sequence 0 to 127 
-    OCR2B = 8;   // set output high again after 4.5 us 
+    OCR0A = 127; // count sequence 0 to 127 
+    OCR0B = 8;   // set output high again after 4.5 us 
 
     // set timers to well-defined initial values to force timer to run in harmonic operation from now on
     GTCCR = 0x02;  // clear timer 2 prescaler
     TCNT1H = 0;    // prepare high-byte for timer1 conter
     TCNT1L = 0;    // clear timer1 counter
-    TCNT2 = 20;    // set timer2 counter to specified start value
+    TCNT0 = 25;    // set timer0 counter to specified start value
        
     // enable timer 1 overflow interrupt at the next line start
     TIMSK1 = 0x01;  // B00000001;     
+    // disable all other interrupts
+    TIMSK0 = 0x00;
+    TIMSK2 = 0x00;
 
     // configure output pin directions
-    DDRB |= 0x06;  // B00000110    enable timer 1 output pins
-    DDRD |= 0xCC;  // B11001000;   enable video output pins 
+    DDRB |= 0x07;  // B00000111    enable timer 1 output pins and debug signal
+    DDRD |= 0xA8;  // B10101000;   enable video output pins 
 }  
 
-void Synth::waitForBlanking()
+void av_waitForBlanking()
 {
-  while (isblanking) {}
-  while (!isblanking) {}
+  while (isblanking) { } 
+  while (!isblanking) { } 
+}
+
+#define PROCESSVOICE(v)                                          \
+{                                                                \
+    v.phase += v.frequency;                                      \
+                                                                 \
+    uint8_t vol = v.currentvolume;                               \    
+    if (vol<v.volume) { vol++; }                                 \
+    else if (vol>v.volume) { vol--; }                            \
+    v.currentvolume = vol;                                       \
+                                                                 \
+    uint8_t phi = (uint8_t) (v.phase >> 8);                      \
+    int8_t s = ((int8_t) pgm_read_byte(v.waveform+phi)) - 128;   \
+    total += (int8_t) ((s*(int16_t) vol) >> 8);                  \
 }
 
 
-
-inline void Synth::processAudio()
+inline void processAudio()
 {
-    uint8_t i;
-
     // process individual voices 
-    int8_t total = 0;
-    for (i=0; i<NUMVOICES; i++)
-    {
-        total += processVoice(voice[i]);
-    }
+    uint8_t total = 128;
+    PROCESSVOICE(voiceA)
+    PROCESSVOICE(voiceB)
+    PROCESSVOICE(voiceC)
+    PROCESSVOICE(voiceD)
 
     // need to boost up the level
-    uint8_t newlevel = 128 + total;
-    if (newlevel>level)
+    if (total>av_level)
     {
-        uint8_t delta = newlevel - level;
-        if (delta>64) {delta=64;}
-        uint16_t boost = boosttable[level];
-        boost = (boost * delta) >> 6;
-        level += delta;
+        uint8_t delta = total - av_level;
+        if (delta>63) {delta=63;}
+        av_level += delta;
 
-        uint16_t val = 1023 - boost;
+        uint16_t val = 1023 - 16 * (uint16_t) delta;
         OCR1AH = 3;             // idle pin A
         OCR1AL = 255;           
         OCR1BH = (uint8_t)(val>>8);  // prepare high byte 
         OCR1BL = (uint8_t)(val);     // write to 16-bit register 
     }
     // need to boost down the level
-    else if (newlevel<level)
+    else if (total<av_level)
     {
-        uint8_t delta = level - newlevel;
-        if (delta>64) {delta=64;}
-        uint16_t boost = boosttable[255-level];
-        boost = (boost * delta) >> 6;
-        level -= delta;
+        uint8_t delta = av_level - total;
+        if (delta>63) {delta=63;}
+        av_level -= delta;
 
-        uint16_t val = 1023 - boost;
+        uint16_t val = 1023 - 16 * (uint16_t) delta;
         OCR1AH = (uint8_t)(val>>8);  // prepare high byte 
         OCR1AL = (uint8_t)(val);     // write to 16-bit register 
         OCR1BH = 3; 
@@ -174,105 +177,50 @@ inline void Synth::processAudio()
     }
 }
 
-inline int8_t Synth::processVoice(_SYNTH_VOICE &v)
-{
-    v.phase += v.frequency;
-
-    uint8_t vol = v.currentvolume;
-    
-    // slowly adjust current volume
-    if (vol<v.volume) { vol++; }
-    else if (vol>v.volume) { vol--; }
-    v.currentvolume = vol;
-  
-    if (vol<=0) { return 0; }  
-    
-    uint8_t phi = (uint8_t) (v.phase >> 8);  // bring to range 0 - 255
-
-    switch (v.waveform)
-    {
-        case RECTANGLE:  
-        {   if (phi<v.duty) { return (vol>>1); }
-            else { return -(vol>>1); }
-        }
-        case SINE:
-        {   int8_t s = ((int8_t) pgm_read_byte(sine_table+phi)) - 128;
-            return (int8_t) ((s*(int16_t) vol) >> 8);
-        }   
-        case TRIANGLE:
-        {   int8_t s;
-            if (phi<128) { s = 2*phi - 127; }  
-            else         { s = 2*(255-phi) - 127; }
-            return (int8_t) ((s*(int16_t) vol) >> 8);
-        }    
-        case SAWTOOTH:   
-        {   int8_t s = phi-127;
-            return (int8_t) ((s*(int16_t) vol) >> 8);
-        }    
-        default:       // silence
-        {   return 0; 
-        }
-    }
-}
-
-
-inline void Synth::adjustSync(uint8_t vcounter)
+inline void adjustSync(uint8_t vcounter)
 {
     const uint8_t vtrigger = 13;
     
     // switch from normal horizontal sync to 32 us pulse intervals
     if (vcounter==vtrigger-1) 
-    {   OCR2A = 63; // count sequence 0 to 63 
+    {   OCR0A = 63; // count sequence 0 to 63 
                     // do not change pulse duration
     }
     // switch to short pulses
     else if (vcounter==vtrigger+0)
     {
-        OCR2B = 3;   // set output high again after 2 us 
+        OCR0B = 3;   // set output high again after 2 us 
     }
     // switch to vsync pulses 
     else if (vcounter==vtrigger+2)
     {
         // delay until counter is beyond the next reset point
-        uint8_t c = TCNT2;
-        while (TCNT2 >= c) {} 
-        OCR2B = 60;   // set output high again after 30 us 
+        uint8_t c = TCNT0;
+        while (TCNT0 >= c) {} 
+        OCR0B = 60;   // set output high again after 30 us 
     }
     // switch to short pulses 
     else if (vcounter==vtrigger+5)
     {
-        OCR2B = 3;   // set output high again after 2 us 
+        OCR0B = 3;   // set output high again after 2 us 
     }
     // switch to normal hsync pulses 
     else if (vcounter==vtrigger+7)
     {
         // delay until counter is beyond the next reset point
-        uint8_t c = TCNT2;
-        while (TCNT2 >= c) {} 
-        OCR2A = 127; // count sequence 0 to 127
-        OCR2B = 8;   // set output high again after 4.5 us 
+        uint8_t c = TCNT0;
+        while (TCNT0 >= c) {} 
+        OCR0A = 127; // count sequence 0 to 127
+        OCR0B = 8;   // set output high again after 4.5 us 
     }  
 }
 
-// interrupt routine every 64 microseconds (15.625 kHz)
-ISR(TIMER1_OVF_vect)
+inline void processVideo()
 {
-    // even out delayed interrupt trigger (due to 1 or 2 cycle instructions)
-    __asm__ __volatile__ (
-            "lds __tmp_reg__,%[counter]\n\t"   // 0x84\n\t"  
-            "asr __tmp_reg__\n\t"       // test for bit 0 of the counter
-            "brcc afterbranch\n\t"      // this takes either 1 or 2 cycles 
-        "afterbranch:\n\t"
-            :
-            :  [counter] "i" (_SFR_ADDR(TCNT1L))
-    );
-      
-//    PORTD = 0xfb;  // B11111011;  // debug output for time measurement
-
-    // progress line counter and trigger appropriate render or sync adjustment action
+      // progress line counter and trigger appropriate render or sync adjustment action
     if (!isblanking)
     {
-        Synth::renderfunction(vcounter);
+        av_renderfunction(vcounter);
         if (vcounter<255)
         {   vcounter++;
         }
@@ -283,7 +231,7 @@ ISR(TIMER1_OVF_vect)
     }
     else
     {
-        Synth::adjustSync(vcounter);
+        adjustSync(vcounter);
         if (vcounter<55)
         {   vcounter++;
         }
@@ -293,8 +241,27 @@ ISR(TIMER1_OVF_vect)
             isblanking = false;
         }
     }
-    
-    Synth::processAudio();
+}
 
-//    PORTD = 0xff;  // B11111111;    // debug output for time measurement
+
+// interrupt routine every 64 microseconds (15.625 kHz)
+ISR(TIMER1_OVF_vect)
+{
+    // debug flag to test how long the interrupt routine runs
+    PORTB = 0x01;
+    
+    // even out delayed interrupt trigger (due to 1 or 2 cycle instructions)
+    __asm__ __volatile__ (
+        "lds __tmp_reg__,%[counter]\n\t"   
+        "asr __tmp_reg__\n\t"       // test for bit 0 of the counter
+        "brcc afterbranch\n\t"      // this takes either 1 or 2 cycles 
+      "afterbranch:\n\t"
+        :
+        :  [counter] "i" (_SFR_ADDR(TCNT1L))
+    );
+      
+    processVideo();
+    processAudio();
+
+    PORTB = 0;
 }

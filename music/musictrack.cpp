@@ -1,6 +1,6 @@
 #include "musictrack.h"
 #include <avr/pgmspace.h>
-#include "synth.h"
+#include "av.h"
 
 // designed for a ATMEGA328
 
@@ -76,9 +76,9 @@ static const uint16_t PROGMEM frequency_table[] =
     HERTZ(1108.73)    // z = C#
 };
 
-Musictrack::Musictrack(uint8_t voice, uint8_t volume, uint8_t waveform, uint8_t ticks_per_note, const __FlashStringHelper* notes) 
+Musictrack::Musictrack(_AV_VOICE &voice, uint8_t volume, uint8_t* waveform, uint8_t ticks_per_note, const __FlashStringHelper* notes) 
 {   
-    this->voice = voice;
+    this->voice = &voice;
     this->volume = volume;
     this->waveform = waveform;
     this->ticks_per_note = ticks_per_note;
@@ -92,8 +92,8 @@ void Musictrack::start()
     this->tickcounter = 0;
     this->targetvolume = 0;
     
-    Synth::voice[voice].volume = 0;
-    Synth::voice[voice].waveform = waveform;
+    voice->volume = 0;
+    voice->waveform = waveform;
 }
 
 bool Musictrack::tick()
@@ -113,8 +113,8 @@ bool Musictrack::tick()
     if ((x>='0') && (x<='z'))
     {   uint8_t index = x-'0';
         uint16_t f = pgm_read_word(frequency_table+index);
-        Synth::voice[voice].frequency = f;
-        Synth::voice[voice].volume = volume;
+        voice->frequency = f;
+        voice->volume = volume;
         targetvolume = (volume>>2) + (volume>>1);        
     }
     else if (x!='-') 
@@ -128,7 +128,7 @@ bool Musictrack::tick()
 
 void Musictrack::adjustvolume()
 {
-    int16_t v = Synth::voice[voice].volume;
+    int16_t v = voice->volume;
     if (v > targetvolume)
     {
         uint8_t d = 20;
@@ -136,7 +136,7 @@ void Musictrack::adjustvolume()
         else v=targetvolume;
     } 
    
-    Synth::voice[voice].volume = (uint8_t) v;
+    voice->volume = (uint8_t) v;
 }
 
 

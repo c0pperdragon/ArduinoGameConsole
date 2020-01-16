@@ -3,6 +3,7 @@
 #define Musictrack_h
 
 #include <inttypes.h>
+#include "av.h"
 
 class __FlashStringHelper;
 
@@ -10,16 +11,16 @@ typedef class Musictrack Musictrack;
 class Musictrack 
 {
 public:
-    Musictrack(uint8_t voice, uint8_t volume, uint8_t waveform, uint8_t ticks_per_note, const __FlashStringHelper* notes);
+    Musictrack(_AV_VOICE &voice, uint8_t volume, uint8_t* waveform, uint8_t ticks_per_note, const __FlashStringHelper* notes);
     void start();
     bool tick();
 
 private:
     void adjustvolume();
  
-    uint8_t voice;
+    _AV_VOICE *voice;
     uint8_t volume;
-    uint8_t waveform;
+    uint8_t* waveform; // points to program space!
     uint8_t ticks_per_note;
     uint8_t* notes;   // points to program space!
     
