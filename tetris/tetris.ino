@@ -42,122 +42,42 @@ static const uint8_t PROGMEM waveTriangle[] =
      31, 29, 27, 25, 23, 21, 19, 17, 15, 13, 11,  9,  7,  5,  3,  1
 };
 
-void setup() 
+static const uint8_t PROGMEM exampleTiles[] = 
 {
-    noInterrupts();
-    av_init(simplepattern);
-    interrupts();
-} 
-
-void simplepattern(uint8_t vcounter) 
-{
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
     
-    PORTD = 0x00;
-    PORTD = 0x00;
-    PORTD = 0x00;
-    PORTD = 0x00;
-    PORTD = 0x00;
-    PORTD = 0x00;
-    PORTD = 0x00;
-    PORTD = 0x00;
-    PORTD = 0x00;
-    PORTD = 0x00;
-    PORTD = 0x00;
-    PORTD = 0x00;
-    PORTD = 0x00;
-    PORTD = 0x00;
-    PORTD = 0x00;
-    PORTD = 0x00;
-    PORTD = 0x00;
-    PORTD = 0x00;
-    PORTD = 0x00;
+    B11111111, B11111111,
+    B10001000, B00010001,
+    B10001000, B00010001,
+    B10001000, B00010001,
+    B10001000, B00010001,
+    B10001000, B00010001,
+    B10001000, B00010001,
+    B11111111, B11111111,
 
-    PORTD = 0x08;
-    PORTD = 0x08;
-    PORTD = 0x08;
-    PORTD = 0x08;
-    PORTD = 0x08;
-    PORTD = 0x08;
-    PORTD = 0x08;
-    PORTD = 0x08;
-    PORTD = 0x08;
-    PORTD = 0x08;
-    PORTD = 0x08;
-    PORTD = 0x08;
-    PORTD = 0x08;
-    PORTD = 0x08;
-    PORTD = 0x08;
-    PORTD = 0x08;
-    PORTD = 0x08;
-    PORTD = 0x08;
+    B11110000, B11110000,
+    B10000000, B00010000,
+    B10000011, B00011100,
+    B10000011, B00011100,
+    B10000011, B00011100,
+    B10000011, B00011100,
+    B10000000, B00010000,
+    B11110000, B11110000
+};
 
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    
-    PORTD = 0x88;
-    PORTD = 0x88;
-    PORTD = 0x88;
-    PORTD = 0x88;
-    PORTD = 0x88;
-    PORTD = 0x88;
-    PORTD = 0x88;
-    PORTD = 0x88;
-    PORTD = 0x88;
-    PORTD = 0x88;
-    PORTD = 0x88;
-    PORTD = 0x88;
-    PORTD = 0x88;
-    PORTD = 0x88;
-    PORTD = 0x88;
-    PORTD = 0x88;
-    PORTD = 0x88;
-    PORTD = 0x88;
-    PORTD = 0x88;
-    PORTD = 0x88;
-    PORTD = 0x88;
-    PORTD = 0x88;
 
-    byte i;
-    for (i=0; i<137; i++) { PORTD = 0; }
-//    for (i=0; i<148; i++) { PORTD = 0; }
+void loop() {}
+void setup()
+{  
+    av_init(exampleTiles, waveSine); 
 
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0x80;
-    PORTD = 0;
-}
+    videoMatrix[7] = 2;
+    videoMatrix[20] = 1;
+    videoMatrix[40] = 2;    
+    videoMatrix[59] = 2;
+    videoMatrix[300] = 1;
+    videoMatrix[319] = 1;
 
-void loop()
-{
     Musictrack part1[4] = {
         //                                 |               |               |               |               |               |               |               |               |
         Musictrack(voiceA, 90, waveTriangle, 5, F("q---l-m-o-qom-l-j---j-m-q---o-m-l---llm-o---q---m---j---j-------o---o-r-v---t-r-q---q-m-q---o-m-l---llm-o---q---m---j---j------ ")),
@@ -172,7 +92,7 @@ void loop()
         Musictrack(voiceC, 60, waveSine,     5, F("V-- V-- V-- V-- X-- X-- X-- X-- V-- V-- V-- V-- U-- U-- U-- U-- V-- V-- V-- V-- X-- X-- X-- X-- V-- V-- V-- V-- U-- U-- U-- U-- ")),
         Musictrack(voiceD, 60, waveSine,     5, F("  e-- e-- e-- e-- c-- c-- c-- c-- e-- e-- e-- e-- e-- e-- e-- e-- e-- e-- e-- e-- c-- c-- c-- c-- e-- e-- e-- e-- e-- e--       "))
     };
-    Song song(4, part2, part1);
+    Song song(4, part1, part1, part2, part1);
 
     av_waitForBlanking();
     song.start();

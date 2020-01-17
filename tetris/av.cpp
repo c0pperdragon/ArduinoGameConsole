@@ -1,68 +1,52 @@
+// designed for a Atmega328p
 #include "av.h"
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #include "pins_arduino.h"
 
-// designed for a ATMEGA328
 
 _AV_VOICE voiceA;
 _AV_VOICE voiceB;
 _AV_VOICE voiceC;
 _AV_VOICE voiceD;
 
-renderfunction_t av_renderfunction;
+uint8_t videoMatrix[320];
+uint8_t *av_tileset;
 
 uint8_t av_level;             // current output voltage level
 uint8_t vcounter;
 volatile bool isblanking;
 
-
-
-static const uint8_t PROGMEM waveDummy[] = 
-{
-    127,130,133,136,139,143,146,149,152,155,158,161,164,167,170,173,
-    176,179,182,184,187,190,193,195,198,200,203,205,208,210,213,215,
-    217,219,221,224,226,228,229,231,233,235,236,238,239,241,242,244,
-    245,246,247,248,249,250,251,251,252,253,253,254,254,254,254,254,
-    255,254,254,254,254,254,253,253,252,251,251,250,249,248,247,246,
-    245,244,242,241,239,238,236,235,233,231,229,228,226,224,221,219,
-    217,215,213,210,208,205,203,200,198,195,193,190,187,184,182,179,
-    176,173,170,167,164,161,158,155,152,149,146,143,139,136,133,130,
-    127,124,121,118,115,111,108,105,102, 99, 96, 93, 90, 87, 84, 81,
-     78, 75, 72, 70, 67, 64, 61, 59, 56, 54, 51, 49, 46, 44, 41, 39,
-     37, 35, 33, 30, 28, 26, 25, 23, 21, 19, 18, 16, 15, 13, 12, 10,
-      9,  8,  7,  6,  5,  4,  3,  3,  2,  1,  1,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  1,  1,  2,  3,  3,  4,  5,  6,  7,  8,
-      9, 10, 12, 13, 15, 16, 18, 19, 21, 23, 25, 26, 28, 30, 33, 35,
-     37, 39, 41, 44, 46, 49, 51, 54, 56, 59, 61, 64, 67, 70, 72, 75,
-     78, 81, 84, 87, 90, 93, 96, 99,102,105,108,111,115,118,121,124
-};
-
          
-inline void initVoice(_AV_VOICE &v)
+inline void initVoice(_AV_VOICE &v, uint8_t *waveform)
 {
     v.volume = 0;
     v.currentvolume = 0;
-    v.waveform = waveDummy;
+    v.waveform = waveform;
     v.duty = 128;
     v.frequency = HERTZ(440);
     v.phase = 0;
     v.volume = 0;
 }
-void av_init(renderfunction_t renderfunction) 
+
+void av_init(uint8_t *tileset, uint8_t *defaultwaveform) 
 {   
-    av_renderfunction = renderfunction;
+    cli();
     
+    uint16_t i;
+   
+    av_tileset = tileset;
+    for (i=0; i<320; i++) { videoMatrix[i]=0; }
+    
+    // start values of individual signal generation
+    initVoice(voiceA,defaultwaveform);
+    initVoice(voiceA,defaultwaveform);
+    initVoice(voiceA,defaultwaveform);
+    initVoice(voiceA,defaultwaveform);
+
     av_level = 128;
-    
     isblanking = true;
     vcounter = 0;
-
-    // start values of individual signal generation
-    initVoice(voiceA);
-    initVoice(voiceB);
-    initVoice(voiceC);
-    initVoice(voiceD);
 
     // -- TIMER 1 register setup
     // set to mode 7 for 10-bit counter (fast PWM)
@@ -94,11 +78,11 @@ void av_init(renderfunction_t renderfunction)
     OCR0A = 127; // count sequence 0 to 127 
     OCR0B = 8;   // set output high again after 4.5 us 
 
-    // set timers to well-defined initial values to force timer to run in harmonic operation from now on
-    GTCCR = 0x02;  // clear timer 2 prescaler
+    // set timers to well-defined initial values to force timers to run in harmonic operation from now on
     TCNT1H = 0;    // prepare high-byte for timer1 conter
     TCNT1L = 0;    // clear timer1 counter
-    TCNT0 = 25;    // set timer0 counter to specified start value
+    GTCCR = 0x01;  // clear timer 0 prescaler
+    TCNT0 = 22;    // set timer0 counter to specified start value
        
     // enable timer 1 overflow interrupt at the next line start
     TIMSK1 = 0x01;  // B00000001;     
@@ -109,6 +93,8 @@ void av_init(renderfunction_t renderfunction)
     // configure output pin directions
     DDRB |= 0x07;  // B00000111    enable timer 1 output pins and debug signal
     DDRD |= 0xA8;  // B10101000;   enable video output pins 
+
+    sei();
 }  
 
 void av_waitForBlanking()
@@ -129,6 +115,11 @@ void av_waitForBlanking()
     uint8_t phi = (uint8_t) (v.phase >> 8);                      \
     int8_t s = ((int8_t) pgm_read_byte(v.waveform+phi)) - 128;   \
     total += (int8_t) ((s*(int16_t) vol) >> 8);                  \
+}
+
+void av_setTileSet(uint8_t *tileset)
+{
+    av_tileset = tileset;
 }
 
 
@@ -215,12 +206,93 @@ inline void adjustSync(uint8_t vcounter)
     }  
 }
 
+inline void renderLine()
+{
+    uint8_t line_x8 = (vcounter & 0xf0) >> 1;
+    
+    __asm__ __volatile__ 
+    (
+        "ld r30,x+           ; fetch next tile index                   \n"
+        "swap r30            ; prepare index                           \n"
+        "mov r31,r30         ;                                         \n"         
+        "andi r30,0xf0       ; multiply index by 16: step 1            \n" 
+        "andi r31,0x0f       ; multiply index by 16: step 2            \n"
+        "add r30,r28         ; compute pixel address                   \n"     
+        "adc r31,r29         ; compute pixel address  -> z             \n"
+
+#define RENDER_ONE_TILE \
+        "lpm __tmp_reg__,z+          ; 0   fetch pixel data            \n" \
+        "                            ; 1                               \n" \
+        "                            ; 2                               \n" \
+        "out %[port],__tmp_reg__     ; 3   write pixel to port         \n" \
+        "ld r25,x+                   ; 4   fetch next tile index       \n" \
+        "                            ; 5                               \n" \
+        "lsl __tmp_reg__             ; 6                               \n" \ 
+        "out %[port],__tmp_reg__     ; 7   write pixel to port         \n" \
+        "swap r25                    ; 8   prepare tile index          \n" \
+        "nop                         ; 9                               \n" \
+        "lsl __tmp_reg__             ; 10                              \n" \ 
+        "out %[port],__tmp_reg__     ; 11  write pixel to port         \n" \
+        "nop                         ; 12                              \n" \
+        "nop                         ; 13                              \n" \
+        "lsl __tmp_reg__             ; 14                              \n" \ 
+        "out %[port],__tmp_reg__     ; 15  write pixel to port         \n" \
+        "lpm __tmp_reg__,z+          ; 16  fetch pixel data            \n" \
+        "                            ; 17                              \n" \
+        "                            ; 18                              \n" \
+        "out %[port],__tmp_reg__     ; 19  write pixel to port         \n" \
+        "mov r31,r25                 ; 20                              \n" \
+        "mov r30,r25                 ; 21                              \n" \
+        "lsl __tmp_reg__             ; 22                              \n" \ 
+        "out %[port],__tmp_reg__     ; 23  write pixel to port         \n" \
+        "andi r30,0xf0               ; 24  multiply index step 1       \n" \
+        "andi r31,0x0f               ; 25  multiply index step 2       \n" \
+        "lsl __tmp_reg__             ; 26                              \n" \ 
+        "out %[port],__tmp_reg__     ; 27  write pixel to port         \n" \
+        "add r30,r28                 ; 28  compute pixel address       \n" \   
+        "adc r31,r29                 ; 29  compute pixel address  -> z \n" \
+        "lsl __tmp_reg__             ; 30                              \n" \ 
+        "out %[port],__tmp_reg__     ; 31  write pixel to port         \n" \
+
+        RENDER_ONE_TILE
+        RENDER_ONE_TILE
+        RENDER_ONE_TILE
+        RENDER_ONE_TILE
+        RENDER_ONE_TILE
+        RENDER_ONE_TILE
+        RENDER_ONE_TILE
+        RENDER_ONE_TILE
+        RENDER_ONE_TILE
+        RENDER_ONE_TILE
+        RENDER_ONE_TILE
+        RENDER_ONE_TILE
+        RENDER_ONE_TILE
+        RENDER_ONE_TILE
+        RENDER_ONE_TILE
+        RENDER_ONE_TILE
+        RENDER_ONE_TILE
+        RENDER_ONE_TILE
+        RENDER_ONE_TILE
+        RENDER_ONE_TILE
+        
+        "nop                                                           \n"
+        "nop                                                           \n"
+        "eor __tmp_reg__,__tmp_reg__                                   \n"
+        "out %[port],__tmp_reg__                                       \n"        
+        :  
+        :  [port] "I" (_SFR_IO_ADDR(PORTD)), 
+                  "x" ( ((uint16_t*)videoMatrix) + (line_x8+(line_x8>>2))),
+                  "y" (av_tileset + (vcounter&0x0e) )
+        :  "r25", "r30", "r31"
+    );
+}
+
 inline void processVideo()
 {
       // progress line counter and trigger appropriate render or sync adjustment action
     if (!isblanking)
     {
-        av_renderfunction(vcounter);
+        renderLine();
         if (vcounter<255)
         {   vcounter++;
         }
@@ -251,7 +323,8 @@ ISR(TIMER1_OVF_vect)
     PORTB = 0x01;
     
     // even out delayed interrupt trigger (due to 1 or 2 cycle instructions)
-    __asm__ __volatile__ (
+    __asm__ __volatile__ 
+    (
         "lds __tmp_reg__,%[counter]\n\t"   
         "asr __tmp_reg__\n\t"       // test for bit 0 of the counter
         "brcc afterbranch\n\t"      // this takes either 1 or 2 cycles 

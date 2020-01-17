@@ -6,7 +6,6 @@
 
 #define HERTZ(n) ((uint16_t)((n)*65536.0/15625.0))
 
-
 typedef struct _AV_VOICE
 {
   uint8_t volume;
@@ -17,11 +16,12 @@ typedef struct _AV_VOICE
   uint16_t phase;
 } _AV_VOICE;
 
-typedef void (*renderfunction_t)(uint8_t line);
 
-
-void av_init(renderfunction_t renderfunction);
+void av_init(uint8_t *tileset, uint8_t *defaultwaveform);
 void av_waitForBlanking();
+void av_setTileSet(uint8_t *tilesset);
+
+extern uint8_t videoMatrix[320];
 extern _AV_VOICE voiceA;
 extern _AV_VOICE voiceB;
 extern _AV_VOICE voiceC;
