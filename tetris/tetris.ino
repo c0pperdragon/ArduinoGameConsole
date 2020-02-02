@@ -42,42 +42,85 @@ static const uint8_t PROGMEM waveTriangle[] =
      31, 29, 27, 25, 23, 21, 19, 17, 15, 13, 11,  9,  7,  5,  3,  1
 };
 
-static const uint8_t PROGMEM exampleTiles[] = 
+static const uint8_t PROGMEM screenTiles[] = 
 {
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    
-    B11111111, B11111111,
-    B10001000, B00010001,
-    B10001000, B00010001,
-    B10001000, B00010001,
-    B10001000, B00010001,
-    B10001000, B00010001,
-    B10001000, B00010001,
-    B11111111, B11111111,
+#include "tetris_tiles.h"
+};
 
-    B11110000, B11110000,
-    B10000000, B00010000,
-    B10000011, B00011100,
-    B10000011, B00011100,
-    B10000011, B00011100,
-    B10000011, B00011100,
-    B10000000, B00010000,
-    B11110000, B11110000
+static const uint8_t PROGMEM pieceShapes[10*16] = 
+{
+    // The J piece
+    0, 0, 0, 0,
+    0, 0, TILE_J, 0,
+    0, 0, TILE_J, 0,
+    0, TILE_J, TILE_J, 0, 
+    // The L piece
+    0, 0, 0, 0,
+    0, TILE_L, 0, 0,
+    0, TILE_L, 0, 0,
+    0, TILE_L, TILE_L, 0,
+    // The O piece
+    0, 0, 0, 0,
+    0, TILE_O, TILE_O, 0,
+    0, TILE_O, TILE_O, 0,
+    0, 0, 0, 0,
+    // The S piece
+    0, 0, 0, 0,
+    0, TILE_S, TILE_S, 0,
+    TILE_S, TILE_S, 0, 0,
+    0, 0, 0, 0,
+    // The T piece
+    0, 0, 0, 0,
+    TILE_T, TILE_T, TILE_T, 0,
+    0, TILE_T, 0, 0,
+    0, 0, 0, 0,
+    // The Z piece
+    0, 0, 0, 0,
+    TILE_Z, TILE_Z, 0, 0,
+    0, TILE_Z, TILE_Z, 0,
+    0, 0, 0, 0,
+    // The I piece
+    0, TILE_I0, 0, 0,
+    0, TILE_I1, 0, 0,
+    0, TILE_I2, 0, 0,
+    0, TILE_I3, 0, 0,
+    // 2. appearance of the I piece
+    0, TILE_H3, 0, 0,
+    0, TILE_H2, 0, 0,
+    0, TILE_H1, 0, 0,
+    0, TILE_H0, 0, 0,
+    // 3. appearance of the I piece
+    0, TILE_I3, 0, 0,
+    0, TILE_I2, 0, 0,
+    0, TILE_I1, 0, 0,
+    0, TILE_I0, 0, 0,
+    // 4. appearance of the I piece
+    0, TILE_H0, 0, 0,
+    0, TILE_H1, 0, 0,
+    0, TILE_H2, 0, 0,
+    0, TILE_H3, 0, 0,
 };
 
 
-void loop() {}
+
+#define PFWIDTH 10
+#define PFHEIGHT 16
+uint8_t playfield[PFWIDTH][PFHEIGHT];
+
+
 void setup()
+{
+    DDRC = 0;     // use port c for inputs
+    PORTC = 0x3f; // weak pull-up
+    DDRB = 0;     // use port b for inputs
+    PORTB = 0x18; // weak pull-ups 
+      
+    av_init(screenTiles, waveSine); 
+}
+void loop() 
 {  
-    av_init(exampleTiles, waveSine); 
-
-    videoMatrix[7] = 2;
-    videoMatrix[20] = 1;
-    videoMatrix[40] = 2;    
-    videoMatrix[59] = 2;
-    videoMatrix[300] = 1;
-    videoMatrix[319] = 1;
-
+    paintBackground();
+    
     Musictrack part1[4] = {
         //                                 |               |               |               |               |               |               |               |               |
         Musictrack(voiceA, 90, waveTriangle, 5, F("q---l-m-o-qom-l-j---j-m-q---o-m-l---llm-o---q---m---j---j-------o---o-r-v---t-r-q---q-m-q---o-m-l---llm-o---q---m---j---j------ ")),
@@ -96,7 +139,150 @@ void setup()
 
     av_waitForBlanking();
     song.start();
-    while (song.tick()) { av_waitForBlanking(); }
 
-    for (;;) {}
+    byte timer=0;
+    byte rot=0;
+    byte i,b;
+    
+    for (;;) 
+    {
+        if (!song.tick()) { song.start(); } 
+        av_waitForBlanking(); 
+        
+        if (timer<50)
+        {   timer++;
+        }
+        else
+        {   byte typ;
+
+            timer = 0;
+            rot = (rot+1) % 4;
+
+            clearPlayfield();
+            for (typ=0; typ<6; typ++)
+            {   setPiece(1 + (typ%2)*4, (typ/2)*4, typ, rot, false); 
+            }
+            setPiece(3,12, 6, rot, false);
+        }
+        
+        paintPlayfield();
+        b = 0;
+        b = getButtons();
+        for (i=0; i<8; i++)
+        {
+           videoMatrix[20*i] = ((b&0x01)==0) ? TILE_WHITE : TILE_BLACK;
+            b = b >> 1;
+        }
+    }
+}
+
+byte getButtons()
+{
+    return (PINC&0x3f) | ((PINB&0x18) << 3);
+}
+
+
+void paintBackground()
+{
+    int i,j;
+    for (i=0; i<320; i++) { videoMatrix[i] = TILE_BLACK; }
+    for (i=0; i<16; i++) 
+    {   
+        videoMatrix[i*20+1] = TILE_WALL;
+        for (j=0; j<10; j++) { videoMatrix[i*20+2+j] = TILE_WHITE; }
+        videoMatrix[i*20+12] = TILE_WALL;       
+    }
+
+    paintBox(2*20+13,2);
+    paintBox(6*20+13,2);   
+    paintBox(10*20+13,4);    
+}
+
+void paintBox(int i, byte h)
+{
+    byte j;
+  
+    videoMatrix[i] = TILE_BOX_LT;
+    videoMatrix[i+1] = TILE_BOX_T;
+    videoMatrix[i+2] = TILE_BOX_T;
+    videoMatrix[i+3] = TILE_BOX_T;
+    videoMatrix[i+4] = TILE_BOX_T;
+    videoMatrix[i+5] = TILE_BOX_T;
+    videoMatrix[i+6] = TILE_BOX_RT;
+    i+=20;
+    for (j=0; j<h; j++)
+    {
+        videoMatrix[i] = TILE_BOX_L;
+        videoMatrix[i+1] = TILE_WHITE;
+        videoMatrix[i+2] = TILE_WHITE;
+        videoMatrix[i+3] = TILE_WHITE;
+        videoMatrix[i+4] = TILE_WHITE;
+        videoMatrix[i+5] = TILE_WHITE;
+        videoMatrix[i+6] = TILE_BOX_R;
+        i+=20;
+    }
+    videoMatrix[i] = TILE_BOX_LB;
+    videoMatrix[i+1] = TILE_BOX_B;
+    videoMatrix[i+2] = TILE_BOX_B;
+    videoMatrix[i+3] = TILE_BOX_B;
+    videoMatrix[i+4] = TILE_BOX_B;
+    videoMatrix[i+5] = TILE_BOX_B;
+    videoMatrix[i+6] = TILE_BOX_RB;
+}
+
+void paintPlayfield()
+{
+    byte x=0; 
+    byte y=0;
+    for (x=0; x<PFWIDTH; x++)
+    {
+        for (y=0; y<PFHEIGHT; y++)
+        {
+            videoMatrix[20*y+x+2] = playfield[x][y];
+        }      
+    }
+}
+
+
+void clearPlayfield()
+{
+    byte x,y;
+    for (x=0; x<PFWIDTH; x++)
+    {
+      for (y=0; y<PFHEIGHT; y++)
+      {
+          playfield[x][y] = 0;
+      }
+    }
+}
+
+bool setPiece(byte x, byte y, byte typ, byte rot, bool onlyTest)
+{
+    byte i;
+    byte tx=0;
+    byte ty=0;
+
+    // use different appearance for I-tile
+    if (typ==6) { typ+=rot; }
+    
+    for (i=0; i<16; i++)
+    { 
+        byte tile = pgm_read_byte(pieceShapes+(typ*16+i));
+        switch (rot)
+        {   case 0:  tx = x + i%4; ty = y + i/4; break;
+            case 1:  ty = y + i%4; tx = x + 3 - i/4; break;
+            case 2:  tx = x + 3 - i%4; ty = y + 3 - i/4; break;
+            case 3:  ty = y + 3 - i%4; tx = x+ i/4; break;
+        }
+        
+        if (tile!=0)     
+        {   if (onlyTest)
+            {   if (playfield[tx][ty]!=0) { return false; }
+            }    
+            else
+            {   playfield[tx][ty] = tile;                
+            }
+        }   
+    }
+    return true;
 }

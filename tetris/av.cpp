@@ -319,9 +319,6 @@ inline void processVideo()
 // interrupt routine every 64 microseconds (15.625 kHz)
 ISR(TIMER1_OVF_vect)
 {
-    // debug flag to test how long the interrupt routine runs
-    PORTB = 0x01;
-    
     // even out delayed interrupt trigger (due to 1 or 2 cycle instructions)
     __asm__ __volatile__ 
     (
@@ -335,6 +332,4 @@ ISR(TIMER1_OVF_vect)
       
     processVideo();
     processAudio();
-
-    PORTB = 0;
 }
