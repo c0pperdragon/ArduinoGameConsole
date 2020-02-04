@@ -126,6 +126,12 @@ bool Musictrack::tick()
     return x!=0;
 }
 
+void Musictrack::silence()
+{
+  voice->volume = 0;
+  targetvolume = 0;
+}
+
 void Musictrack::adjustvolume()
 {
     int16_t v = voice->volume;
@@ -148,12 +154,11 @@ void Song::start()
     for (i=0; i<numtracks; i++) { part[0][i].start(); }
 }
 
-bool Song::tick()
+void Song::tick()
 {
     uint8_t i;
-    bool over;
 
-    over = false;
+    bool over = false;
     for (i=0; i<numtracks; i++) 
     {   
         if (!part[current][i].tick()) { over=true; }
@@ -162,12 +167,20 @@ bool Song::tick()
     if (over)
     {
         current++;
-        if (current>=numparts) { return false; }
+        if (current>=numparts) { current=0; }
         
         for (i=0; i<numtracks; i++) 
         {   part[current][i].start(); 
             part[current][i].tick();
         }
     }
-    return true; 
+}
+
+void Song::silence()
+{
+    uint8_t i;
+    for (i=0; i<numtracks; i++) 
+    {   
+        part[current][i].silence();
+    }
 }

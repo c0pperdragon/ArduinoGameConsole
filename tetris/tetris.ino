@@ -47,66 +47,173 @@ static const uint8_t PROGMEM screenTiles[] =
 #include "tetris_tiles.h"
 };
 
-static const uint8_t PROGMEM pieceShapes[10*16] = 
+static const uint8_t PROGMEM pieceShapes[] = 
 {
-    // The J piece
-    0, 0, 0, 0,
+    // 0 = The J piece
     0, 0, TILE_J, 0,
     0, 0, TILE_J, 0,
     0, TILE_J, TILE_J, 0, 
-    // The L piece
     0, 0, 0, 0,
+    //
+    0, 0, 0, 0,
+    0, TILE_J, 0, 0,
+    0, TILE_J, TILE_J, TILE_J,
+    0, 0, 0, 0, 
+    //
+    0, 0, 0, 0,
+    0, TILE_J, TILE_J, 0,
+    0, TILE_J, 0, 0,
+    0, TILE_J, 0, 0, 
+    //
+    0, 0, 0, 0,
+    TILE_J, TILE_J, TILE_J, 0,
+    0, 0, TILE_J, 0, 
+    0, 0, 0, 0,
+    //
+    // 1 = The L piece
     0, TILE_L, 0, 0,
     0, TILE_L, 0, 0,
     0, TILE_L, TILE_L, 0,
-    // The O piece
+    0, 0, 0, 0,
+    //
+    0, 0, 0, 0,
+    0, TILE_L, TILE_L, TILE_L,
+    0, TILE_L, 0, 0,
+    0, 0, 0, 0,
+    //
+    0, 0, 0, 0,
+    0, TILE_L, TILE_L, 0,
+    0, 0, TILE_L, 0,
+    0, 0, TILE_L, 0,
+    //
+    0, 0, 0, 0,
+    0, 0, TILE_L, 0,
+    TILE_L, TILE_L, TILE_L, 0,
+    0, 0, 0, 0,
+    //
+    // 2 = The O piece
     0, 0, 0, 0,
     0, TILE_O, TILE_O, 0,
     0, TILE_O, TILE_O, 0,
     0, 0, 0, 0,
-    // The S piece
+    //
+    0, 0, 0, 0,
+    0, TILE_O, TILE_O, 0,
+    0, TILE_O, TILE_O, 0,
+    0, 0, 0, 0,
+    //
+    0, 0, 0, 0,
+    0, TILE_O, TILE_O, 0,
+    0, TILE_O, TILE_O, 0,
+    0, 0, 0, 0,
+    //
+    0, 0, 0, 0,
+    0, TILE_O, TILE_O, 0,
+    0, TILE_O, TILE_O, 0,
+    0, 0, 0, 0,
+    //
+    // 3 = The S piece
     0, 0, 0, 0,
     0, TILE_S, TILE_S, 0,
     TILE_S, TILE_S, 0, 0,
     0, 0, 0, 0,
-    // The T piece
+    //
+    0, TILE_S, 0, 0,
+    0, TILE_S, TILE_S, 0,
+    0, 0, TILE_S, 0,
+    0, 0, 0, 0,
+    //
+    0, 0, 0, 0,
+    0, TILE_S, TILE_S, 0,
+    TILE_S, TILE_S, 0, 0,
+    0, 0, 0, 0,
+    //
+    0, TILE_S, 0, 0,
+    0, TILE_S, TILE_S, 0,
+    0, 0, TILE_S, 0,
+    0, 0, 0, 0,
+    //
+    // 4 = The T piece
     0, 0, 0, 0,
     TILE_T, TILE_T, TILE_T, 0,
     0, TILE_T, 0, 0,
     0, 0, 0, 0,
-    // The Z piece
+    //
+    0,  TILE_T, 0, 0,
+    TILE_T, TILE_T, 0, 0,
+    0, TILE_T, 0, 0,
+    0, 0, 0, 0,
+    //
+    0, TILE_T, 0, 0,
+    TILE_T, TILE_T, TILE_T, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    //
+    0, TILE_T, 0, 0,
+    0, TILE_T, TILE_T, 0,
+    0, TILE_T, 0, 0,
+    0, 0, 0, 0,
+    //
+    // 5 = The Z piece
     0, 0, 0, 0,
     TILE_Z, TILE_Z, 0, 0,
     0, TILE_Z, TILE_Z, 0,
     0, 0, 0, 0,
-    // The I piece
+    //
+    0, 0, TILE_Z, 0,
+    0, TILE_Z, TILE_Z, 0, 
+    0, TILE_Z, 0, 0,
+    0, 0, 0, 0,
+    //
+    0, 0, 0, 0,
+    TILE_Z, TILE_Z, 0, 0,
+    0, TILE_Z, TILE_Z, 0,
+    0, 0, 0, 0,
+    //
+    0, 0, TILE_Z, 0,
+    0, TILE_Z, TILE_Z, 0, 
+    0, TILE_Z, 0, 0,
+    0, 0, 0, 0,
+    //
+    // 6 = The I piece
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    TILE_H0, TILE_H1, TILE_H2, TILE_H3,
+    0, 0, 0, 0,
+    //
     0, TILE_I0, 0, 0,
     0, TILE_I1, 0, 0,
     0, TILE_I2, 0, 0,
     0, TILE_I3, 0, 0,
-    // 2. appearance of the I piece
-    0, TILE_H3, 0, 0,
-    0, TILE_H2, 0, 0,
-    0, TILE_H1, 0, 0,
-    0, TILE_H0, 0, 0,
-    // 3. appearance of the I piece
-    0, TILE_I3, 0, 0,
-    0, TILE_I2, 0, 0,
-    0, TILE_I1, 0, 0,
+    // 
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    TILE_H0, TILE_H1, TILE_H2, TILE_H3,
+    0, 0, 0, 0,
+    //
     0, TILE_I0, 0, 0,
-    // 4. appearance of the I piece
-    0, TILE_H0, 0, 0,
-    0, TILE_H1, 0, 0,
-    0, TILE_H2, 0, 0,
-    0, TILE_H3, 0, 0,
+    0, TILE_I1, 0, 0,
+    0, TILE_I2, 0, 0,
+    0, TILE_I3, 0, 0,
 };
 
 
-
 #define PFWIDTH 10
-#define PFHEIGHT 16
+#define PFHEIGHT 20
 uint8_t playfield[PFWIDTH][PFHEIGHT];
+byte piecex;
+byte piecey;
+byte piecetype;
+byte piecerotation;
 
+#define BUTTON_LEFT   0x01
+#define BUTTON_RIGHT  0x02
+#define BUTTON_UP     0x04
+#define BUTTON_DOWN   0x08
+#define BUTTON_A      0x10
+#define BUTTON_B      0x20
+#define BUTTON_START  0x40
+#define BUTTON_SELECT 0x80
 
 void setup()
 {
@@ -119,8 +226,6 @@ void setup()
 }
 void loop() 
 {  
-    paintBackground();
-    
     Musictrack part1[4] = {
         //                                 |               |               |               |               |               |               |               |               |
         Musictrack(voiceA, 90, waveTriangle, 5, F("q---l-m-o-qom-l-j---j-m-q---o-m-l---llm-o---q---m---j---j-------o---o-r-v---t-r-q---q-m-q---o-m-l---llm-o---q---m---j---j------ ")),
@@ -135,45 +240,134 @@ void loop()
         Musictrack(voiceC, 60, waveSine,     5, F("V-- V-- V-- V-- X-- X-- X-- X-- V-- V-- V-- V-- U-- U-- U-- U-- V-- V-- V-- V-- X-- X-- X-- X-- V-- V-- V-- V-- U-- U-- U-- U-- ")),
         Musictrack(voiceD, 60, waveSine,     5, F("  e-- e-- e-- e-- c-- c-- c-- c-- e-- e-- e-- e-- e-- e-- e-- e-- e-- e-- e-- e-- c-- c-- c-- c-- e-- e-- e-- e-- e-- e--       "))
     };
-    Song song(4, part1, part1, part2, part1);
+    Song song(4, part1, part1, part2);
 
-    av_waitForBlanking();
+    // simple start screen
+    paintBackground();
+    paintBox(4,5, 6,5, false);
+    paintText(4,6, "TET\173IS");
+    paintText(4,8, "press");
+    paintText(4,9, "START");
+    while ( (nextFrame(NULL) & BUTTON_START) == 0);
+
+    // start game
+    piecex = 4;
+    piecey = 10;
+    piecetype = 6;
+    piecerotation = 0;
+    paintBackground();
+    paintPlayfield();
+
     song.start();
-
+    
     byte timer=0;
     byte rot=0;
     byte i,b;
-    
+    bool muted = false;
+   
     for (;;) 
     {
-        if (!song.tick()) { song.start(); } 
-        av_waitForBlanking(); 
+        // wait for next video frame
+        byte clicked = nextFrame(muted ? NULL : &song);
         
-        if (timer<50)
-        {   timer++;
+        // process user input
+        // mute/unmute
+        if ((clicked & BUTTON_SELECT) != 0)
+        {   muted = !muted;
+            if (muted) song.silence();
         }
-        else
-        {   byte typ;
+        // enter pause mode
+        if ( (clicked & BUTTON_START) != 0)
+        {
+            paintPlayfield();
+            paintBox(4,7, 6,1, false);
+            paintText(4,7,"PAUSE");
+            song.silence();
+            while ( (nextFrame(NULL) & BUTTON_START) == 0);  
+            paintPlayfield();          
+            continue;                      
+        }
 
-            timer = 0;
-            rot = (rot+1) % 4;
-
-            clearPlayfield();
-            for (typ=0; typ<6; typ++)
-            {   setPiece(1 + (typ%2)*4, (typ/2)*4, typ, rot, false); 
+        // controlling the piece
+        if ((clicked & BUTTON_LEFT) && piecex>0) 
+        {   if (!setPiece(piecex-1,piecey,piecetype,piecerotation,false,false))
+            {   piecex--;
             }
-            setPiece(3,12, 6, rot, false);
         }
+        if ((clicked & BUTTON_RIGHT) && piecex<100)
+        {   if (!setPiece(piecex+1,piecey,piecetype,piecerotation,false,false))
+            {   piecex++;
+            }
+        }
+        if (clicked & BUTTON_A)
+        {
+            if (!setPiece(piecex,piecey,piecetype,(piecerotation+1)&3,false,false))
+            {   piecerotation = (piecerotation+1) & 3;
+            } 
+            else if (!setPiece(piecex-1,piecey,piecetype,(piecerotation+1)&3,false,false))
+            {   piecerotation = (piecerotation+1) & 3;
+                piecex--;
+            } 
+            else if (!setPiece(piecex+1,piecey,piecetype,(piecerotation+1)&3,false,false))
+            {   piecerotation = (piecerotation+1) & 3;
+                piecex++;
+            } 
+        }
+        if (clicked & BUTTON_B)
+        {
+            if (!setPiece(piecex,piecey,piecetype,(piecerotation-1)&3,false,false))
+            {   piecerotation = (piecerotation-1) & 3;
+            }
+            else if (!setPiece(piecex-1,piecey,piecetype,(piecerotation-1)&3,false,false))
+            {   piecerotation = (piecerotation-1) & 3;
+                piecex--;
+            }
+            else if (!setPiece(piecex+1,piecey,piecetype,(piecerotation-1)&3,false,false))
+            {   piecerotation = (piecerotation-1) & 3;
+                piecex++;
+            }
+        }
+
+//        // game time progressing
+//        if (timer<50)
+//        {   timer++;
+//        }
+//        else
+//        {   byte typ;
+//
+//            timer = 0;
+//            rot = (rot+1) % 4
+//
+//            clearPlayfield();
+//            for (typ=0; typ<6; typ++)
+//            {   setPiece(1 + (typ%2)*4, (typ/2)*4, typ, rot, false); 
+//            }
+//            setPiece(3,12, 6, rot, false);
+//        }
         
         paintPlayfield();
-        b = 0;
-        b = getButtons();
-        for (i=0; i<8; i++)
-        {
-           videoMatrix[20*i] = ((b&0x01)==0) ? TILE_WHITE : TILE_BLACK;
-            b = b >> 1;
-        }
+        setPiece(piecex, piecey, piecetype, piecerotation, false, true);
+
+//        b = clicked;
+//        for (i=0; i<8; i++)
+//        {   
+//            videoMatrix[i*20] = ((b & 0x01)==0) ? TILE_WHITE : TILE_BLACK;
+//            b = b>>1;
+//        }
     }
+}
+
+byte prevButtons = 0xff;
+byte nextFrame(Song* song)
+{
+    av_waitForBlanking(); 
+      
+    if (song) { song->tick(); }
+
+    byte b = getButtons();
+    byte clicked = (~b) & prevButtons;
+    prevButtons = b;
+    return clicked;
 }
 
 byte getButtons()
@@ -189,45 +383,53 @@ void paintBackground()
     for (i=0; i<16; i++) 
     {   
         videoMatrix[i*20+1] = TILE_WALL;
-        for (j=0; j<10; j++) { videoMatrix[i*20+2+j] = TILE_WHITE; }
+        for (j=2; j<12; j++) videoMatrix[i*20+j] = TILE_WHITE;
         videoMatrix[i*20+12] = TILE_WALL;       
     }
 
-    paintBox(2*20+13,2);
-    paintBox(6*20+13,2);   
-    paintBox(10*20+13,4);    
+    paintBox(14,1, 5,1, false);
+    paintText(14,1, "SCORE");
+    paintText(13,3, "       ");
+    paintBox(14,5, 5,2, false);
+    paintText(14,5, "LEVEL");    
+    paintBox(14,8, 5,2, true);   
+    paintText(14,8, "LINES");    
+    paintBox(15,11, 4,4, true);   
+    paintTile(14,10, TILE_BOX_LSLIT_EXTRA); 
 }
 
-void paintBox(int i, byte h)
+void paintText(byte x, byte y, char* txt)
 {
-    byte j;
-  
-    videoMatrix[i] = TILE_BOX_LT;
-    videoMatrix[i+1] = TILE_BOX_T;
-    videoMatrix[i+2] = TILE_BOX_T;
-    videoMatrix[i+3] = TILE_BOX_T;
-    videoMatrix[i+4] = TILE_BOX_T;
-    videoMatrix[i+5] = TILE_BOX_T;
-    videoMatrix[i+6] = TILE_BOX_RT;
-    i+=20;
-    for (j=0; j<h; j++)
+    while (*txt)
     {
-        videoMatrix[i] = TILE_BOX_L;
-        videoMatrix[i+1] = TILE_WHITE;
-        videoMatrix[i+2] = TILE_WHITE;
-        videoMatrix[i+3] = TILE_WHITE;
-        videoMatrix[i+4] = TILE_WHITE;
-        videoMatrix[i+5] = TILE_WHITE;
-        videoMatrix[i+6] = TILE_BOX_R;
-        i+=20;
+        paintTile(x,y,*txt);
+        txt++;
+        x++;
     }
-    videoMatrix[i] = TILE_BOX_LB;
-    videoMatrix[i+1] = TILE_BOX_B;
-    videoMatrix[i+2] = TILE_BOX_B;
-    videoMatrix[i+3] = TILE_BOX_B;
-    videoMatrix[i+4] = TILE_BOX_B;
-    videoMatrix[i+5] = TILE_BOX_B;
-    videoMatrix[i+6] = TILE_BOX_RB;
+}
+
+inline void paintTile(byte x, byte y, byte t)
+{
+  videoMatrix[x+y*20] = t;
+}
+
+void paintBox(byte x, byte y, byte w, byte h, bool topoverlaps)
+{
+    byte i,j;
+  
+    paintTile(x-1,y-1, topoverlaps ? TILE_BOX_LSLIT : TILE_BOX_LT);
+    paintTile(x+w,y-1, topoverlaps ? TILE_BOX_RSLIT : TILE_BOX_RT);
+    paintTile(x-1,y+h, TILE_BOX_LB);
+    paintTile(x+w,y+h, TILE_BOX_RB);
+    for (i=0; i<w; i++) {
+        paintTile(x+i,y-1, topoverlaps ? TILE_BOX_SLIT : TILE_BOX_T);
+        paintTile(x+i,y+h, TILE_BOX_B);
+    }
+    for (i=0; i<h; i++) 
+    {   paintTile(x-1,y+i, TILE_BOX_L);
+        paintTile(x+w,y+i, TILE_BOX_R);
+        for (j=0; j<w; j++) paintTile(x+j,y+i, TILE_WHITE);
+    }        
 }
 
 void paintPlayfield()
@@ -236,13 +438,12 @@ void paintPlayfield()
     byte y=0;
     for (x=0; x<PFWIDTH; x++)
     {
-        for (y=0; y<PFHEIGHT; y++)
+        for (y=0; y<16; y++)
         {
-            videoMatrix[20*y+x+2] = playfield[x][y];
+            videoMatrix[20*y+x+2] = playfield[x][y+4];
         }      
     }
 }
-
 
 void clearPlayfield()
 {
@@ -256,33 +457,26 @@ void clearPlayfield()
     }
 }
 
-bool setPiece(byte x, byte y, byte typ, byte rot, bool onlyTest)
+bool setPiece(byte x, byte y, byte typ, byte rot, bool toPlayfield, bool toScreen)
 {
+    bool anycollisions = false;
     byte i;
-    byte tx=0;
-    byte ty=0;
 
-    // use different appearance for I-tile
-    if (typ==6) { typ+=rot; }
-    
     for (i=0; i<16; i++)
     { 
-        byte tile = pgm_read_byte(pieceShapes+(typ*16+i));
-        switch (rot)
-        {   case 0:  tx = x + i%4; ty = y + i/4; break;
-            case 1:  ty = y + i%4; tx = x + 3 - i/4; break;
-            case 2:  tx = x + 3 - i%4; ty = y + 3 - i/4; break;
-            case 3:  ty = y + 3 - i%4; tx = x+ i/4; break;
-        }
-        
-        if (tile!=0)     
-        {   if (onlyTest)
-            {   if (playfield[tx][ty]!=0) { return false; }
-            }    
+        byte tile = pgm_read_byte(pieceShapes+(((int)typ)*64+rot*16+i));
+        if (tile!=0)
+        {
+            byte tx = x - 1 + i%4;
+            byte ty = y - 1 + i/4;
+            
+            if (tx>PFWIDTH || ty>PFHEIGHT) { anycollisions=true; }
             else
-            {   playfield[tx][ty] = tile;                
+            {   if (playfield[tx][ty]!=0) { anycollisions=true; }    
+                if (toPlayfield) { playfield[tx][ty] = tile; }
+                if (toScreen && ty>=4) { videoMatrix[20*(ty-4)+tx+2] = tile; }
             }
         }   
     }
-    return true;
+    return anycollisions;
 }

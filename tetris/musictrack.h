@@ -14,6 +14,7 @@ public:
     Musictrack(_AV_VOICE &voice, uint8_t volume, uint8_t* waveform, uint8_t ticks_per_note, const __FlashStringHelper* notes);
     void start();
     bool tick();
+    void silence();
 
 private:
     void adjustvolume();
@@ -65,7 +66,8 @@ class Song
         }
 
         void start();
-        bool tick();
+        void tick();
+        void silence();
 
     private:
         uint8_t numtracks;
