@@ -205,6 +205,11 @@ byte piecex;
 byte piecey;
 byte piecetype;
 byte piecerotation;
+byte nextpieces[7];
+byte nextcursor;
+byte gamespeed;
+byte turntimeleft;
+bool speedup;
 
 #define BUTTON_LEFT   0x01
 #define BUTTON_RIGHT  0x02
@@ -251,10 +256,16 @@ void loop()
     while ( (nextFrame(NULL) & BUTTON_START) == 0);
 
     // start game
+    generateNextPieces();
     piecex = 4;
-    piecey = 10;
-    piecetype = 6;
+    piecey = 3;
     piecerotation = 0;
+    nextcursor = 0;
+    piecetype = nextpieces[nextcursor++];
+    gamespeed = 50;
+    turntimeleft = gamespeed;
+    speedup = false;
+    
     paintBackground();
     paintPlayfield();
 
@@ -293,11 +304,13 @@ void loop()
         {   if (!setPiece(piecex-1,piecey,piecetype,piecerotation,false,false))
             {   piecex--;
             }
+            speedup = false;
         }
         if ((clicked & BUTTON_RIGHT) && piecex<100)
         {   if (!setPiece(piecex+1,piecey,piecetype,piecerotation,false,false))
             {   piecex++;
             }
+            speedup = false;
         }
         if (clicked & BUTTON_A)
         {
@@ -312,6 +325,7 @@ void loop()
             {   piecerotation = (piecerotation+1) & 3;
                 piecex++;
             } 
+            speedup = false;
         }
         if (clicked & BUTTON_B)
         {
@@ -326,35 +340,59 @@ void loop()
             {   piecerotation = (piecerotation-1) & 3;
                 piecex++;
             }
+            speedup = false;
+        }
+        if (clicked & BUTTON_DOWN)
+        {
+            speedup = true;
+            turntimeleft=0;
         }
 
-//        // game time progressing
-//        if (timer<50)
-//        {   timer++;
-//        }
-//        else
-//        {   byte typ;
-//
-//            timer = 0;
-//            rot = (rot+1) % 4
-//
-//            clearPlayfield();
-//            for (typ=0; typ<6; typ++)
-//            {   setPiece(1 + (typ%2)*4, (typ/2)*4, typ, rot, false); 
-//            }
-//            setPiece(3,12, 6, rot, false);
-//        }
+        // game time progressing
+        if (turntimeleft>0)
+        {
+            turntimeleft--;
+        }
+        else
+        {
+            turntimeleft = speedup ? 1 : gamespeed;
+
+            // piece moves down 
+            if (!setPiece(piecex,piecey+1,piecetype,piecerotation,false,false))
+            {   piecey++;
+            }
+            // piece can not move down 
+            else
+            {
+                // piece locks in place
+                setPiece(piecex,piecey,piecetype,piecerotation,true,false);
+
+                piecex=4;
+                piecey=3;
+                piecetype = nextpieces[nextcursor++];
+                piecerotation = 0;
+                speedup = false;
+ 
+                if (nextcursor>6) 
+                {   generateNextPieces();
+                    nextcursor=0;
+                } 
+ 
+                // if the next piece can not be spawned, the game is over
+                if (setPiece(piecex,piecey,piecetype,piecerotation,false,false))
+                {
+                    break;
+                }
+            }
+        }
         
         paintPlayfield();
         setPiece(piecex, piecey, piecetype, piecerotation, false, true);
-
-//        b = clicked;
-//        for (i=0; i<8; i++)
-//        {   
-//            videoMatrix[i*20] = ((b & 0x01)==0) ? TILE_WHITE : TILE_BLACK;
-//            b = b>>1;
-//        }
     }
+
+    // after the end of the game
+    song.silence();
+    for (;;) { nextFrame(NULL); }
 }
 
 byte prevButtons = 0xff;
@@ -470,7 +508,7 @@ bool setPiece(byte x, byte y, byte typ, byte rot, bool toPlayfield, bool toScree
             byte tx = x - 1 + i%4;
             byte ty = y - 1 + i/4;
             
-            if (tx>PFWIDTH || ty>PFHEIGHT) { anycollisions=true; }
+            if (tx>=PFWIDTH || ty>=PFHEIGHT) { anycollisions=true; }
             else
             {   if (playfield[tx][ty]!=0) { anycollisions=true; }    
                 if (toPlayfield) { playfield[tx][ty] = tile; }
@@ -479,4 +517,17 @@ bool setPiece(byte x, byte y, byte typ, byte rot, bool toPlayfield, bool toScree
         }   
     }
     return anycollisions;
+}
+
+void generateNextPieces()
+{
+    byte i;
+    for (i=0; i<7; i++) { nextpieces[i] = i; }
+    for (i=0; i<6; i++)
+    {
+        byte j = random(i,7);
+        byte dummy = nextpieces[i];
+        nextpieces[i] = nextpieces[j];
+        nextpieces[j] = dummy;
+    }
 }
