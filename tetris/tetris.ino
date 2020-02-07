@@ -207,9 +207,11 @@ byte piecetype;
 byte piecerotation;
 byte nextpieces[7];
 byte nextcursor;
-byte gamespeed;
 byte turntimeleft;
 bool speedup;
+int lines;
+long score;
+bool muted = false;
 
 #define BUTTON_LEFT   0x01
 #define BUTTON_RIGHT  0x02
@@ -219,6 +221,8 @@ bool speedup;
 #define BUTTON_B      0x20
 #define BUTTON_START  0x40
 #define BUTTON_SELECT 0x80
+
+byte levelspeed[21] = { 40, 30, 27, 24, 22, 20, 18, 16, 14, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 }; 
 
 void setup()
 {
@@ -253,146 +257,185 @@ void loop()
     paintText(4,6, "TET\173IS");
     paintText(4,8, "press");
     paintText(4,9, "START");
-    while ( (nextFrame(NULL) & BUTTON_START) == 0);
+    while ( (nextFrame(NULL) & BUTTON_START) == 0) { random(100); }
 
-    // start game
-    generateNextPieces();
-    piecex = 4;
-    piecey = 3;
-    piecerotation = 0;
-    nextcursor = 0;
-    piecetype = nextpieces[nextcursor++];
-    gamespeed = 50;
-    turntimeleft = gamespeed;
-    speedup = false;
-    
-    paintBackground();
-    paintPlayfield();
+    muted = false;
 
-    song.start();
-    
-    byte timer=0;
-    byte rot=0;
-    byte i,b;
-    bool muted = false;
-   
-    for (;;) 
+    for (;;)
     {
-        // wait for next video frame
-        byte clicked = nextFrame(muted ? NULL : &song);
-        
-        // process user input
-        // mute/unmute
-        if ((clicked & BUTTON_SELECT) != 0)
-        {   muted = !muted;
-            if (muted) song.silence();
-        }
-        // enter pause mode
-        if ( (clicked & BUTTON_START) != 0)
-        {
-            paintPlayfield();
-            paintBox(4,7, 6,1, false);
-            paintText(4,7,"PAUSE");
-            song.silence();
-            while ( (nextFrame(NULL) & BUTTON_START) == 0);  
-            paintPlayfield();          
-            continue;                      
-        }
+      // start the music 
+      song.start();
+      if (muted) song.silence();
+      
+      int i,j;
+      
+      // start one round
+      for (i=0; i<PFHEIGHT; i++) for (j=0; j<PFWIDTH; j++) playfield[j][i] = 0;
+      generateNextPieces();
+      piecex = 4;
+      piecey = 3;
+      piecerotation = 0;
+      nextcursor = 0;
+      piecetype = nextpieces[nextcursor++];
+      turntimeleft = levelspeed[computeLevel()];
+      speedup = false;
+      score = 0;
+      lines = 0;
+      
+      paintBackground();
+      paintPlayfield();
+      paintNextPiece();
+      paintStats();
+      
+      // game loop for one round
+      for (;;) 
+      {
+          // wait for next video frame
+          byte clicked = nextFrame(muted ? NULL : &song);
+          
+          // process user input
+          // mute/unmute
+          if ((clicked & BUTTON_SELECT) != 0)
+          {   muted = !muted;
+              if (muted) song.silence();
+          }
+          // enter pause mode
+          if ( (clicked & BUTTON_START) != 0)
+          {
+              paintBox(4,7, 6,1, false);
+              paintText(4,7,"PAUSE");
+              song.silence();
+              while ( (nextFrame(NULL) & BUTTON_START) == 0) { random(100); }
+              paintPlayfield();          
+              setPiece(piecex, piecey, piecetype, piecerotation, false, true);
+              continue;                      
+          }
+  
+          // controlling the piece
+          if ((clicked & BUTTON_LEFT) && piecex>0) 
+          {   if (!setPiece(piecex-1,piecey,piecetype,piecerotation,false,false))
+              {   piecex--;
+              }
+          }
+          if ((clicked & BUTTON_RIGHT) && piecex<100)
+          {   if (!setPiece(piecex+1,piecey,piecetype,piecerotation,false,false))
+              {   piecex++;
+              }
+          }
+          if (clicked & BUTTON_A)
+          {
+              if (!setPiece(piecex,piecey,piecetype,(piecerotation+1)&3,false,false))
+              {   piecerotation = (piecerotation+1) & 3;
+              } 
+              else if (!setPiece(piecex-1,piecey,piecetype,(piecerotation+1)&3,false,false))
+              {   piecerotation = (piecerotation+1) & 3;
+                  piecex--;
+              } 
+              else if (!setPiece(piecex+1,piecey,piecetype,(piecerotation+1)&3,false,false))
+              {   piecerotation = (piecerotation+1) & 3;
+                  piecex++;
+              } 
+          }
+          if (clicked & BUTTON_B)
+          {
+              if (!setPiece(piecex,piecey,piecetype,(piecerotation-1)&3,false,false))
+              {   piecerotation = (piecerotation-1) & 3;
+              }
+              else if (!setPiece(piecex-1,piecey,piecetype,(piecerotation-1)&3,false,false))
+              {   piecerotation = (piecerotation-1) & 3;
+                  piecex--;
+              }
+              else if (!setPiece(piecex+1,piecey,piecetype,(piecerotation-1)&3,false,false))
+              {   piecerotation = (piecerotation-1) & 3;
+                  piecex++;
+              }
+          }
+          if (clicked & BUTTON_DOWN)
+          {
+              speedup = true;
+              turntimeleft=0;
+          }
+  
+          // game time progressing
+          if (turntimeleft>0)
+          {
+              turntimeleft--;
+          }
+          else
+          {
+              turntimeleft = speedup ? 1 : levelspeed[computeLevel()];
+              if (speedup) { score++; }
+  
+              // piece moves down 
+              if (!setPiece(piecex,piecey+1,piecetype,piecerotation,false,false))
+              {   piecey++;
+              }
+              // piece can not move down 
+              else
+              {
+                  // piece locks in place
+                  setPiece(piecex,piecey,piecetype,piecerotation,true,false);
+  
+                  // test for removal of full lines
+                  int removed = removeCompleteRows(true, true);
+                  if (removed>0)
+                  {   byte blinking;
+                      byte blinkduration = 40;
+                      // peform blinking and then really remove lines
+                      for (blinking=0; blinking<blinkduration; blinking++)
+                      {   nextFrame(muted ? NULL : &song);
+                          paintPlayfield();
+                          removeCompleteRows(blinking!=blinkduration-1, ((blinking%10) < 5) && blinking!=blinkduration-1);
+                      }
+                      // increase score
+                      int multi = computeLevel()+1;
+                      switch (removed) 
+                      {   case 1:   score += 40 * multi; break;
+                          case 2:   score += 100 * multi; break; 
+                          case 3:   score += 300 * multi; break;
+                          case 4:   score += 1200 * multi; break;
+                      }
+                      // track number of removed lines
+                      lines += removed;
+                  }
+  
+                  piecex=4;
+                  piecey=3;
+                  piecetype = nextpieces[nextcursor++];
+                  piecerotation = 0;
+                  speedup = false;
+   
+                  if (nextcursor>6) 
+                  {   generateNextPieces();
+                      nextcursor=0;
+                  } 
+  
+                  paintNextPiece();
+                  paintStats();
+   
+                  // if the next piece can not be spawned, the game is over
+                  if (setPiece(piecex,piecey,piecetype,piecerotation,false,false))
+                  {
+                      break;
+                  }
+              }
+          }
+          
+          paintPlayfield();
+          setPiece(piecex, piecey, piecetype, piecerotation, false, true);
+      }
+    
+      // after the end of the game
+      song.silence();
 
-        // controlling the piece
-        if ((clicked & BUTTON_LEFT) && piecex>0) 
-        {   if (!setPiece(piecex-1,piecey,piecetype,piecerotation,false,false))
-            {   piecex--;
-            }
-            speedup = false;
-        }
-        if ((clicked & BUTTON_RIGHT) && piecex<100)
-        {   if (!setPiece(piecex+1,piecey,piecetype,piecerotation,false,false))
-            {   piecex++;
-            }
-            speedup = false;
-        }
-        if (clicked & BUTTON_A)
-        {
-            if (!setPiece(piecex,piecey,piecetype,(piecerotation+1)&3,false,false))
-            {   piecerotation = (piecerotation+1) & 3;
-            } 
-            else if (!setPiece(piecex-1,piecey,piecetype,(piecerotation+1)&3,false,false))
-            {   piecerotation = (piecerotation+1) & 3;
-                piecex--;
-            } 
-            else if (!setPiece(piecex+1,piecey,piecetype,(piecerotation+1)&3,false,false))
-            {   piecerotation = (piecerotation+1) & 3;
-                piecex++;
-            } 
-            speedup = false;
-        }
-        if (clicked & BUTTON_B)
-        {
-            if (!setPiece(piecex,piecey,piecetype,(piecerotation-1)&3,false,false))
-            {   piecerotation = (piecerotation-1) & 3;
-            }
-            else if (!setPiece(piecex-1,piecey,piecetype,(piecerotation-1)&3,false,false))
-            {   piecerotation = (piecerotation-1) & 3;
-                piecex--;
-            }
-            else if (!setPiece(piecex+1,piecey,piecetype,(piecerotation-1)&3,false,false))
-            {   piecerotation = (piecerotation-1) & 3;
-                piecex++;
-            }
-            speedup = false;
-        }
-        if (clicked & BUTTON_DOWN)
-        {
-            speedup = true;
-            turntimeleft=0;
-        }
-
-        // game time progressing
-        if (turntimeleft>0)
-        {
-            turntimeleft--;
-        }
-        else
-        {
-            turntimeleft = speedup ? 1 : gamespeed;
-
-            // piece moves down 
-            if (!setPiece(piecex,piecey+1,piecetype,piecerotation,false,false))
-            {   piecey++;
-            }
-            // piece can not move down 
-            else
-            {
-                // piece locks in place
-                setPiece(piecex,piecey,piecetype,piecerotation,true,false);
-
-                piecex=4;
-                piecey=3;
-                piecetype = nextpieces[nextcursor++];
-                piecerotation = 0;
-                speedup = false;
- 
-                if (nextcursor>6) 
-                {   generateNextPieces();
-                    nextcursor=0;
-                } 
- 
-                // if the next piece can not be spawned, the game is over
-                if (setPiece(piecex,piecey,piecetype,piecerotation,false,false))
-                {
-                    break;
-                }
-            }
-        }
-        
-        paintPlayfield();
-        setPiece(piecex, piecey, piecetype, piecerotation, false, true);
+      paintBox(4,5, 6,5, false);
+      paintText(4,5, " GAME");
+      paintText(4,6, " OVER");
+      paintText(4,7, "     ");
+      paintText(4,8, "press");
+      paintText(4,9, "START");
+      while ( (nextFrame(NULL) & BUTTON_START) == 0) { random(100); }
     }
-
-    // after the end of the game
-    song.silence();
-    for (;;) { nextFrame(NULL); }
 }
 
 byte prevButtons = 0xff;
@@ -411,6 +454,44 @@ byte nextFrame(Song* song)
 byte getButtons()
 {
     return (PINC&0x3f) | ((PINB&0x18) << 3);
+}
+
+byte removeCompleteRows(bool onlyTest, bool blink)
+{
+    byte i,j;
+    byte removedrows=0;
+    
+    for (i=PFHEIGHT; i!=255; i--)
+    {
+        byte completerow = true;
+        for (j=0; j<PFWIDTH; j++)
+        {   
+            if (playfield[j][i]==0) { completerow=false; }
+        }
+
+        if (completerow)
+        {   removedrows++;
+            if (blink && i>=4)
+            {   for (j=0; j<PFWIDTH; j++) 
+                {   paintTile(2+j, i-4, TILE_BLACK);
+                }           
+            }
+        }
+        else 
+        {   if (!onlyTest)
+            {   for (j=0; j<PFWIDTH; j++) 
+                {   playfield[j][i+removedrows] = playfield[j][i];
+                }
+            }
+        }
+    }
+    if (!onlyTest)
+    {   for (i=0; i<removedrows; i++)
+        {
+            for (j=0; j<PFWIDTH; j++) { playfield[j][i] = 0; }
+        }
+    }
+    return removedrows;
 }
 
 
@@ -446,9 +527,31 @@ void paintText(byte x, byte y, char* txt)
     }
 }
 
+void paintNumber(byte x, byte y, byte width, int n)
+{
+    byte i;
+    for (i=0; i<width; i++)
+    {   byte digit = n % 10;
+        paintTile(x+width-1-i, y, (n>0 || i==0) ? 48+digit : TILE_WHITE);
+        n = n / 10;
+    }
+}
+
+void paintStats()
+{
+    if (score>999999) { score = 999999; }
+    if (score<10000) { paintNumber(13,3,6, (int) score ); }
+    else 
+    {   paintNumber(15,3,4, (int) (1000+score%1000) );
+        paintNumber(13,3,3, (int) (score/1000) );
+    }
+    paintNumber(14,6,4, computeLevel());
+    paintNumber(14,9,4, lines);
+}
+
 inline void paintTile(byte x, byte y, byte t)
 {
-  videoMatrix[x+y*20] = t;
+    videoMatrix[x+y*20] = t;
 }
 
 void paintBox(byte x, byte y, byte w, byte h, bool topoverlaps)
@@ -468,6 +571,20 @@ void paintBox(byte x, byte y, byte w, byte h, bool topoverlaps)
         paintTile(x+w,y+i, TILE_BOX_R);
         for (j=0; j<w; j++) paintTile(x+j,y+i, TILE_WHITE);
     }        
+}
+
+void paintNextPiece()
+{
+    byte x;
+    byte y;
+    byte type = nextpieces[nextcursor];
+    for (y=0; y<4; y++)
+    {   for (x=0; x<4; x++)
+        {
+            byte tile = pgm_read_byte(pieceShapes+(((int)type)*64+x+y*4));
+            paintTile(x+15,y+11,tile); 
+        }
+    }
 }
 
 void paintPlayfield()
@@ -530,4 +647,10 @@ void generateNextPieces()
         nextpieces[i] = nextpieces[j];
         nextpieces[j] = dummy;
     }
+}
+
+byte computeLevel()
+{
+    if (lines>200) { return 20; }
+    return ( ((byte) lines) / 10 );
 }
