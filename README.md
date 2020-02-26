@@ -2,7 +2,7 @@
 A minimal solution to create audio and video with an Arduino Nano
 
 I wanted to build a game console into the case of a small USB game pad (a NES controler look-alike).
-To make the work a challenge, I wanted to only use an Arduino Nano and some passive 
+To make the work a challenge, I wanted to only use an Arduino Nano clocked at 16 Mhz and some passive 
 components (diodes are OK) and create the best possible video and audio signal that is
 imaginable with such restrictions.
 
@@ -18,3 +18,4 @@ The screen flicker is caused by the phone camera. In reality the picture looks s
 
 ![alt text](doc/console.jpg "Finished device")
 ![alt text](doc/inside.jpg "Components inside the case")
+![alt text](doc/screen.jpg "Screenshot")
