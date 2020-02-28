@@ -46,6 +46,10 @@ static const uint8_t PROGMEM screenTiles[] =
 {
 #include "tetris_tiles.h"
 };
+static const uint8_t PROGMEM artworkTiles[] = 
+{
+#include "artwork_tiles.h"
+};
 
 static const uint8_t PROGMEM pieceShapes[] = 
 {
@@ -305,7 +309,25 @@ void loop()
               paintBox(4,7, 6,1, false);
               paintText(4,7,"PAUSE");
               song.silence();
-              while ( (nextFrame(NULL) & BUTTON_START) == 0) { random(100); }
+              int countclicks = 0;
+              for (;;) 
+              {
+                  byte buttons = nextFrame(NULL);
+                  if ((buttons & BUTTON_START) != 0) { break; }
+                  // show artwork screen
+                  if ((buttons & BUTTON_SELECT) != 0) 
+                  {   countclicks++; 
+                      if (countclicks==5) 
+                      { 
+                          easter();  
+                          paintBackground();
+                          paintNextPiece();
+                          paintStats();
+                          break;
+                      }
+                  }
+                  random(100);
+              }
               paintPlayfield();          
               setPiece(piecex, piecey, piecetype, piecerotation, false, true);
               continue;                      
@@ -653,4 +675,68 @@ byte computeLevel()
 {
     if (lines>200) { return 20; }
     return ( ((byte) lines) / 10 );
+}
+
+
+static const uint8_t PROGMEM easterMap[] = 
+{
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,tA3,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,tJe,tKe,tLe,tMe,tNe,tOe,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,tI7,tJ7,  0,  0,  0,  0,  0,  0,tB0,tC0,tD0,tJf,tKf,tLf,tMf,tNf,tOf,tM1,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,tH8,tI8,tJ8,tK8,  0,  0,  0,  0,  0,tB1,tC1,tD1,tJg,tKg,tLg,tMg,tNg,tOg,tM2,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,tA3,  0,tH9,tI9,tJ9,tK9,  0,  0,  0,  0,  0,tB2,tC2,  0,tJh,tKh,tLh,tMh,tNh,tOh,tB2,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,tHa,tIa,tJa,tKa,  0,  0,  0,  0,  0,  0,tA2,  0,  0,  0,tB4,  0,  0,tA3,tB2,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,tHb,tIb,tJb,tKb,  0,  0,  0,  0,  0,  0,  0,  0,  0,tA3,  0,  0,  0,  0,tB2,  0,  0,  0,  0,
+    0,tBe,tCe,tDe,tEe,tFe,tGe,tHe,  0,tHc,tIc,tJc,tKc,  0,  0,tP3,tQ3,  0,  0,  0,  0,  0,  0,  0,tB4,  0,  0,  0,  0,  0,  0,  0,
+    0,tBf,tCf,tDf,tEf,tFf,tGf,tHf,  0,tB2,tO0,tP0,tO3,  0,  0,tP4,tQ4,  0,tO1,tP1,tN2,  0,  0,  0,  0,  0,tC8,tD8,tE8,tF8,  0,  0,
+    0,tBg,tCg,tDg,tEg,tFg,tGg,tHg,  0,tB2,tO0,tP0,  0,  0,  0,tP5,tQ5,  0,tO0,tP0,  0,  0,tB3,tB3,tB3,tB3,tC9,tD9,tE9,tF9,  0,  0,
+    0,tBh,tCh,tDh,tEh,tFh,tGh,tHh,  0,tB2,tO0,tP0,  0,  0,  0,  0,tO3,  0,tO0,tP0,tN2,tB3,tB3,tB3,tB3,tB3,tCa,  0,  0,tFa,  0,  0,
+  tQ0,tQ0,tQ0,tQ0,tQ0,tQ0,tQ0,tQ0,tQ0,tQ0,tR2,tQ2,tQ0,tQ0,tQ0,tQ0,tQ0,tQ0,tR2,tP0,  0,tB3,tB3,tB3,tB3,tB3,tCb,tDb,tEb,tFb,  0,  0,
+  tQ1,tQ1,tQ1,tQ1,tQ1,tQ1,tQ1,tQ1,tQ1,tQ1,tQ1,tQ1,tQ1,tR1,tR0,tQ1,tQ1,tQ1,tR1,tP0,tN2,tB3,tB3,tB3,tB3,tB4,tCc,tDc,tEc,tFc,tM1,  0,
+    0,  0,  0,  0,  0,tA3,  0,  0,  0,  0,  0,  0,tN2,tB4,tA3,tN2,  0,  0,tO0,tQ2,tQ0,tQ0,tQ0,tQ0,tQ0,tQ0,tCd,tDd,tEd,tFd,tM2,  0,
+    0,  0,tA3,  0,  0,  0,  0,  0,  0,tB0,tC0,tD0,  0,  0,tB4,  0,  0,  0,tO2,tQ1,tQ1,tQ1,tQ1,tQ1,tQ1,tQ1,tQ1,tQ1,tQ1,tB2,  0,  0,
+  tB4,  0,  0,  0,tB4,  0,  0,  0,  0,tB1,tC1,tD1,  0,tO3,  0,tB0,tC0,tD0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,tC2,tB2,  0,  0,  0,tB1,tC1,tD1,  0,  0,tM1,tM1,tB4,tM1,tM1,tB4,tM1,tM1,tB4,tM1,tM1,  0,
+  tB4,tA3,  0,  0,  0,  0,tB0,tC0,tD0,  0,tB0,tC0,tD0,  0,tO3,  0,tC2,  0,  0,  0,tM2,tM2,tB4,tM2,tM2,tB4,tM2,tM2,tB4,tM2,tM2,  0,
+    0,  0,tB4,  0,  0,  0,tB1,tC1,tD1,  0,tB1,tC1,tD1,tA3,  0,tB0,tC0,tD0,  0,  0,tM1,tM1,tB4,tM1,tM1,tB4,tM1,tM1,tB4,tM1,tM1,  0,
+    0,  0,  0,  0,  0,  0,  0,tC2,tB0,tC0,tD0,tC2,  0,  0,  0,tB1,tC1,tD1,  0,  0,tM2,tM2,tB4,tM2,tM2,tB4,tM2,tM2,tB4,tM2,tM2,  0,
+    0,  0,  0,  0,tA3,  0,  0,  0,tB1,tC1,tD1,tA3,  0,tB4,  0,  0,tC2,  0,  0,  0,tM1,tM1,tB4,tM1,tM1,tB4,tM1,tM1,tB4,tM1,tM1,  0,
+  tB4,  0,  0,  0,  0,  0,  0,  0,  0,tC2,tB3,tA2,tB4,tB0,tC0,tD0,  0,  0,  0,  0,tM2,tM2,tB4,tM2,tM2,tB4,tM2,tM2,tB4,tM2,tM2,  0,
+    0,  0,  0,tB4,  0,tB4,  0,  0,tO3,  0,tB2,tB2,tB2,tB1,tC1,tD1,  0,  0,  0,  0,  0,tB4,  0,  0,  0,  0,  0,tA3,  0,  0,  0,  0,
+    0,tB4,  0,  0,  0,  0,  0,  0,  0,tB0,tC0,tD0,tB4,  0,tC2,  0,  0,  0,  0,  0,tA3,  0,  0,  0,  0,  0,  0,  0,  0,tB4,  0,  0, 
+    0,  0,  0,  0,tA3,  0,  0,  0,  0,tB1,tC1,tD1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,tB4,  0,  0,  0,  0,  0,  0,  0,  0, 
+};
+void easter()
+{
+    byte vx = 6;
+    byte vy = 8;
+    
+    for (;;)
+    {
+        av_setTileSet(artworkTiles); 
+       
+        byte x,y;
+        for (y=0; y<16; y++) 
+        {
+            for (x=0; x<20; x++) 
+            { 
+                videoMatrix[x+y*20] = pgm_read_byte(easterMap + ((int)(vy+y))*32 + vx+x);
+            }
+        }
+        byte buttons = nextFrame(NULL);
+        if ((buttons & BUTTON_START) != 0) { break; }
+        if ((buttons & BUTTON_UP) != 0 && vy>7) { vy--; }
+        if ((buttons & BUTTON_DOWN) != 0 && vy<16) { vy++; }
+        if ((buttons & BUTTON_LEFT) != 0 && vx>0) { vx--; }
+        if ((buttons & BUTTON_RIGHT) != 0 && vx<12) { vx++; }
+    }
+    
+    av_setTileSet(screenTiles);
 }
